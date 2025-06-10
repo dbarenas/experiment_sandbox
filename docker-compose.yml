@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  datascience-env:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8888:8888"  # Jupyter Notebook
+      - "8000:8000"  # FastAPI
+    volumes:
+      - .:/app  # Mount current directory to /app in container for notebooks and code
+    depends_on:
+      - postgres_db
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres_db:5432/mydatabase
+      # Superset specific environment variables if running Superset within this container
+      - SUPERSET_SECRET_KEY=your_strong_secret_key # Change this in production
+      # Add other environment variables as needed
+
+  postgres_db:
+    image: pgvector/pgvector:pg16 # Using pgvector specific image for pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Command to initialize pgvector extension if not automatically done by the image
+    # The pgvector/pgvector image should handle this automatically.
+    # If not, you might need an init script.
+
+  superset:
+    image: apache/superset:latest # Using official Superset image
+    ports:
+      - "8088:8088" # Superset UI
+    depends_on:
+      - postgres_db
+    environment:
+      # Tell Superset how to connect to your Postgres database
+      # This assumes you will configure the database connection within Superset UI
+      # or via a superset_config.py if needed for more complex setups.
+      SUPERSET_SECRET_KEY: 'a_very_strong_secret_key_for_superset' # CHANGE THIS!
+      # Point to the custom config file
+      SUPERSET_CONFIG_PATH: /app/superset_home/superset_config.py
+      # Example for SQLAlchemy URI if Superset needs to store its metadata in your Postgres
+      # SQLALCHEMY_DATABASE_URI: postgresql://user:password@postgres_db:5432/mydatabase
+      # For Superset to use its own SQLite by default, or you can point it to Postgres
+      # If you want Superset to use Postgres for its own metadata:
+      # DB_HOST: postgres_db
+      # DB_PORT: 5432
+      # DB_USER: user
+      # DB_PASS: password
+      # DB_NAME: mydatabase
+    volumes:
+      - superset_data:/app/superset_home # Persist Superset's metadata
+      - ./superset_config.py:/app/superset_home/superset_config.py # Mount the custom config
+    # You might need to run an init command for Superset if it's the first time
+    # command: >
+    #   bash -c "superset db upgrade &&     #            superset fab create-admin --username admin --firstname Superset --lastname Admin --email admin@superset.com --password admin &&     #            superset init"
+
+volumes:
+  postgres_data:
+  superset_data:
