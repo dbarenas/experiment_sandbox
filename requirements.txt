@@ -1,0 +1,11 @@
+tensorflow
+transformers
+datasets
+evaluate
+psycopg2-binary
+pgvector
+apache-superset
+fastapi
+uvicorn[standard]
+plotly
+jupyterlab
